@@ -1,5 +1,7 @@
 require("dotenv").config();
 const axios = require("axios");
+const fetch = require('node-fetch');
+const fs = require('fs');
 const { Configuration, OpenAIApi } = require("openai");
 exports.Imgdream = async (req, res) => {
     try {
@@ -52,12 +54,11 @@ exports.Imgdream = async (req, res) => {
       return res.status(500).send("Server Error");
     }
 };
-  
+
+
   
 exports.Imgdalle = async (req, res) => {
     try {
-
-        // res.send("Hello from dalle")
         const configuration = new Configuration({
         apiKey: process.env.OPENAI_API_KEY,
         });
@@ -67,12 +68,13 @@ exports.Imgdalle = async (req, res) => {
         prompt: prompt,
         n: num_outputs, 
         size: size, 
+        response_format: "b64_json"
     });
-    const resp = [];
+    const respabs = [];
     for (let i = 0; i < num_outputs; i++) {
-        resp.push(response.data.data[i].url);
+        respabs.push(response.data.data[i].b64_json);
     }
-    res.send(resp);
+    res.send(respabs);
         
 
     } catch (error) {

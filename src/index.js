@@ -64,7 +64,11 @@ app.use(cors("*"));
 app.use("/api", apiV3Limiter, (req, res, next) => {
   Router(req, res, next);
 });
-app.use("/api" , apiV3Limiter , image)
+
+
+app.use("/api" , apiV3Limiter , image) // https://localhost:2000/api/image/dalle
+
+
 app.get("*", (req, res) => {
   res.sendFile(path.join(config.DIR, "client/index.html"));
 });
