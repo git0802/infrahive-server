@@ -53,6 +53,3 @@ exports.JoinWaitList = async (req, res) => {
   }
 };
 
-// <=========================| Image part |================================>
-
-// TODO: Add environment Variables

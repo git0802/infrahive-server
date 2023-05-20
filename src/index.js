@@ -1,4 +1,3 @@
-// require("dotenv/config");
 const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose");
@@ -13,6 +12,7 @@ const { createStream } = require("rotating-file-stream");
 const methodOverride = require("method-override");
 const morgan = require("morgan");
 const compression = require("compression");
+const image = require("./api/generative-ai/image/image")
 
 
 const app = express();
@@ -64,6 +64,7 @@ app.use(cors("*"));
 app.use("/api", apiV3Limiter, (req, res, next) => {
   Router(req, res, next);
 });
+app.use("/api" , apiV3Limiter , image)
 app.get("*", (req, res) => {
   res.sendFile(path.join(config.DIR, "client/index.html"));
 });

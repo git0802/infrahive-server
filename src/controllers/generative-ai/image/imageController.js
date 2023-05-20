@@ -62,11 +62,11 @@ exports.Imgdalle = async (req, res) => {
         apiKey: process.env.OPENAI_API_KEY,
         });
         const openai = new OpenAIApi(configuration);
-        const { prompt, num_outputs, size } = req.body;
-    const response = await openai.createImage({
+        const { prompt , num_outputs, size } = req.body;
+        const response = await openai.createImage({
         prompt: prompt,
         n: num_outputs, 
-        size: size, //"1024x1024"
+        size: size, 
     });
     const resp = [];
     for (let i = 0; i < num_outputs; i++) {
