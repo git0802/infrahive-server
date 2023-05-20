@@ -1,4 +1,3 @@
-// const { restart } = require('nodemon');
 const { WaitList, MainUser, Sessions } = require('../models');
 const { signAccessToken } = require('./baseController');
 // =============== | authentication part | ================
@@ -24,6 +23,7 @@ exports.Login = async (req, res) => {
     } else {
       return res.status(400).json("Email doesn't exist.")
     }
+
 
   } catch (error) {
     console.error({ title: "Login", message: error, date: new Date() });
@@ -90,3 +90,7 @@ exports.JoinWaitList = async (req, res) => {
     return res.status(500).send("Server Error");
   }
 };
+
+// <=========================| Image part |================================>
+
+// TODO: Add environment Variables

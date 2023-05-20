@@ -10,4 +10,5 @@ Router.post("/sessionCheck", tokenMiddleware.check_token, authController.session
 Router.delete("/sendLogout", tokenMiddleware.check_token, authController.Logout)
 Router.post("/join_wait_list", authController.JoinWaitList)
 
+
 module.exports = Router
