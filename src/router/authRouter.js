@@ -4,8 +4,9 @@ const tokenMiddleware = require("../middlewares/token")
 
 const Router = routerx()
 
-Router.get("/userLogin", authController.Login)
-Router.get("/sessionCheck", tokenMiddleware.check_token, authController.sessionCheck)
+Router.post("/login", authController.Login)
+Router.post("/register", authController.Register)
+Router.post("/sessionCheck", tokenMiddleware.check_token, authController.sessionCheck)
 Router.delete("/sendLogout", tokenMiddleware.check_token, authController.Logout)
 Router.post("/join_wait_list", authController.JoinWaitList)
 

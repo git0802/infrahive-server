@@ -8,13 +8,14 @@ const mainConf = require("../config");
 
 const mainSchema = new Schema(
   {
-    username: { type: String, required: true, unique: true },
-    email: { type: String, required: false, unique: false },
+    fname: { type: String },
+    lname: { type: String },
+    email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
     permission: {
       type: Schema.Types.ObjectId,
       ref: tblConf.main_permission,
-      default: mongoose.Types.ObjectId(mainConf.USERS.player),
+      default: mongoose.Types.ObjectId(mainConf.USERS.user),
     },
   },
   { timestamps: true }
@@ -37,8 +38,8 @@ mainSchema.methods.comparePassword = function (password) {
 
 const sessionSchema = new Schema(
   {
-    userId: {
-      type: Schema.Types.ObjectId,
+    email: {
+      type: String,
       required: true,
       ref: "users",
     },
@@ -46,9 +47,8 @@ const sessionSchema = new Schema(
       type: String,
     },
     permission: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: tblConf.main_permission,
-      default: mongoose.Types.ObjectId(mainConf.USERS.player),
     },
   },
   { timestamps: true }

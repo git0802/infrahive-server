@@ -14,7 +14,6 @@ const methodOverride = require("method-override");
 const morgan = require("morgan");
 const compression = require("compression");
 
-
 const app = express();
 const server = http.Server(app);
 

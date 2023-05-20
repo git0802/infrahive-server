@@ -1,5 +1,5 @@
 module.exports = {
-  DBCONNECT: "mongodb://localhost:27017/apiinfra",
+  DBCONNECT: "mongodb://0.0.0.0:27017/apiinfra",
   ServerPort: 2000,
   BASEURL: __dirname + "/uploads/",
   DIR: __dirname,
@@ -7,5 +7,5 @@ module.exports = {
     expiretime: 1000 * 60 * 60,
   },
   site: "ApiInfra",
-  Encrypt_Key:"apiinfra_key"
+  Encrypt_Key: "apiinfra_key"
 };
