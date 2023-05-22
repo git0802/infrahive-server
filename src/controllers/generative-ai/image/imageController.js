@@ -6,6 +6,7 @@ const { Configuration, OpenAIApi } = require("openai");
 exports.Imgdream = async (req, res) => {
     try {
       const { prompt , samples, style, cfg , cgp ,height ,width , steps } = req.body;
+       prompt = prompt + "in style" + style;
     let data = JSON.stringify({
       text_prompts: [
         {
