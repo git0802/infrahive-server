@@ -9,7 +9,7 @@ exports.Imgdream = async (req, res) => {
     let data = JSON.stringify({
       text_prompts: [
         {
-          text: prompt + "in style" + style,
+          text: prompt + " in style " + style,
         },
       ],
       cfg_scale: cfg, 
@@ -62,11 +62,11 @@ exports.Imgdalle = async (req, res) => {
         apiKey: process.env.OPENAI_API_KEY,
         });
         const openai = new OpenAIApi(configuration);
-        const { prompt , num_outputs, size } = req.body;
+        const { prompt , num_outputs, size , style } = req.body;
         const response = await openai.createImage({
-        prompt: prompt,
-        n: num_outputs, 
-        size: size, 
+        prompt: prompt + " in style " + style,
+        n: num_outputs,
+        size: size,
         response_format: "b64_json"
     });
     const respabs = [];
