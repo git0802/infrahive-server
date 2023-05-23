@@ -14,7 +14,6 @@ const morgan = require("morgan");
 const compression = require("compression");
 const image = require("./api/generative-ai/image/image")
 
-
 const app = express();
 const server = http.Server(app);
 
