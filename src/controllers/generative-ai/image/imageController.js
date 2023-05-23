@@ -6,7 +6,7 @@ const { Configuration, OpenAIApi } = require("openai");
 exports.Imgdream = async (req, res) => {
     try {
       const { prompt , samples, style, cfg , cgp ,height ,width , steps } = req.body;
-    let data = JSON.stringify({
+      let data = JSON.stringify({
       text_prompts: [
         {
           text: prompt + " in style " + style,
@@ -42,8 +42,8 @@ exports.Imgdream = async (req, res) => {
       .catch((error) => {
         console.log(error);
       });
-  
-  
+
+      
     } catch (error) {
       console.error({
         title: "Imgdream",
