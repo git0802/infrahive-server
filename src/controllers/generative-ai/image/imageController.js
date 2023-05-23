@@ -1,5 +1,7 @@
 require("dotenv").config();
 const axios = require("axios");
+const fetch = require('node-fetch');
+const fs = require('fs');
 const { Configuration, OpenAIApi } = require("openai");
 exports.Imgdream = async (req, res) => {
     try {
@@ -7,7 +9,7 @@ exports.Imgdream = async (req, res) => {
     let data = JSON.stringify({
       text_prompts: [
         {
-          text: prompt,
+          text: prompt + " in style " + style,
         },
       ],
       cfg_scale: cfg, 
@@ -16,7 +18,6 @@ exports.Imgdream = async (req, res) => {
       width: width,
       samples: samples,
       steps: steps,
-      style_preset: style 
     });
     let config = {
       method: "post",
@@ -52,27 +53,27 @@ exports.Imgdream = async (req, res) => {
       return res.status(500).send("Server Error");
     }
 };
-  
+
+
   
 exports.Imgdalle = async (req, res) => {
     try {
-
-        // res.send("Hello from dalle")
         const configuration = new Configuration({
         apiKey: process.env.OPENAI_API_KEY,
         });
         const openai = new OpenAIApi(configuration);
-        const { prompt, num_outputs, size } = req.body;
-    const response = await openai.createImage({
-        prompt: prompt,
-        n: num_outputs, 
-        size: size, //"1024x1024"
+        const { prompt , num_outputs, size , style } = req.body;
+        const response = await openai.createImage({
+        prompt: prompt + " in style " + style,
+        n: num_outputs,
+        size: size,
+        response_format: "b64_json"
     });
-    const resp = [];
+    const respabs = [];
     for (let i = 0; i < num_outputs; i++) {
-        resp.push(response.data.data[i].url);
+        respabs.push(response.data.data[i].b64_json);
     }
-    res.send(resp);
+    res.send(respabs);
         
 
     } catch (error) {

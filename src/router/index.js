@@ -6,6 +6,8 @@ const Router = routerx();
 
 
 Router.use("/auth", authRouter);
+
 Router.use("/app", appRouter);
 Router.use("/image", imageRouter);
 module.exports = Router;
+
