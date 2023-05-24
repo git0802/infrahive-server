@@ -13,6 +13,7 @@ const methodOverride = require("method-override");
 const morgan = require("morgan");
 const compression = require("compression");
 const image = require("./api/generative-ai/image/image")
+const text = require("./api/generative-ai/text/text")
 
 const app = express();
 const server = http.Server(app);
@@ -65,7 +66,8 @@ app.use("/api", apiV3Limiter, (req, res, next) => {
 });
 
 
-app.use("/api" , apiV3Limiter , image) // https://localhost:2000/api/image/dalle
+app.use("/api" , apiV3Limiter , image) // https://localhost:2000/api/image/
+app.use("/api" , apiV3Limiter , text) //https://localhost:2000/api/text/
 
 
 app.get("*", (req, res) => {
