@@ -3,10 +3,11 @@ const axios = require("axios");
 
 
 //Implementaions:
-// 1. OpenAi- [Chatgpt(gpt-3.5-turbo) ,  gpt3(davinci)] - Completed
-// 2. Anthropic- [Claude-v1 , Claude-instant-v1.1] - Completed
-// 3. Cohere- [To be implemented] - Not Complete (need access)
-// 4. Bard- [To be implemented] - Not Complete (not available)
+// 1. OpenAi- [Chatgpt(gpt-3.5-turbo) ,  gpt3(davinci)] - Completed ✅
+// 2. Anthropic- [Claude-v1 , Claude-instant-v1.1] - Completed ✅
+// 3. Cohere- [command , Command-light] - Completed ✅
+// 4. Bard- [To be implemented] - Not Complete (not available) 
+
 exports.Anthropic = async (req, res) => {
   try {
     let prompt = req.body.prompt; //required
@@ -51,10 +52,56 @@ exports.Anthropic = async (req, res) => {
   }
 };
 
+exports.Cohere = async (req, res) => {
+  try {
+    let prompt = req.body.prompt; //required
+    let model = req.body.model || "command"; //required => 2 models available ("command" && "command-light")
+    let max_tokens = req.body.max_tokens || 1000; //optional (advanced) => defaults to 1000
+    let temperature = req.body.temperature || 0.75; //optional (advanced) => defaults to 0.75
+    let data = JSON.stringify({
+      prompt: prompt,
+      model: model,
+      max_tokens: max_tokens,
+      temperature: temperature,
+      truncate: "START",
+    });
+    let config = {
+      method: "post",
+      maxBodyLength: Infinity,
+      url: "https://api.cohere.ai/v1/generate",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${process.env.COHERE_API_KEY}`,
+      },
+      data: data,
+    };
+
+    axios
+      .request(config)
+      .then((response) => {
+        try {
+          res.send(response.data.generations[0].text);
+        } catch {
+          res.send("Axios Error in Cohere Text.");
+        }
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  } catch (error) {
+    console.error({
+      title: "Cohere Text",
+      message: error.message,
+      date: new Date(),
+    });
+    return res.status(500).send("Server Error in Cohere Text.");
+  }
+};
+
 exports.OpenAi = async (req, res) => {
   try {
     const prompt = req.body.prompt; //required
-    const model = req.body.model; //required
+    const model = req.body.model || "chatgpt"; //required => defaults to "chatgpt"
     let temperature = req.body.temperature || 0.7; // optional
     let max_tokens = req.body.max_tokens || 1000; //optional
     if (model != "chatgpt" && model != "gpt3") {
@@ -103,7 +150,7 @@ exports.OpenAi = async (req, res) => {
             model == "chatgpt"
               ? response.data.choices[0].message.content
               : response.data.choices[0].text;
-          res.send(prompt + resp);
+          res.send(resp);
         } catch {
           res.send("Error occured! Could not answer your query.");
         }
