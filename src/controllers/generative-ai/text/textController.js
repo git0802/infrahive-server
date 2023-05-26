@@ -101,7 +101,7 @@ exports.Cohere = async (req, res) => {
 exports.OpenAi = async (req, res) => {
   try {
     const prompt = req.body.prompt; //required
-    const model = req.body.model || "chatgpt"; //required => defaults to "chatgpt"
+    const model = req.body.model || "chatgpt"; //required => 2 models available => ("chatgpt" , "gpt3") :: defaults to "chatgpt"
     let temperature = req.body.temperature || 0.7; // optional
     let max_tokens = req.body.max_tokens || 1000; //optional
     if (model != "chatgpt" && model != "gpt3") {
