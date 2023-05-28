@@ -131,5 +131,5 @@ src/8866cms.js
 src/8866admin.js
 # src/config/index.js
 # src/config/provider.js
-# uploads/*
+uploads/*
 .htaccess
