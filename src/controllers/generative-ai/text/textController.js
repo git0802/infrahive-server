@@ -4,14 +4,14 @@ const axios = require("axios");
 
 //Implementaions:
 // 1. OpenAi- [Chatgpt(gpt-3.5-turbo) ,  gpt3(davinci)] - Completed ✅
-// 2. Anthropic- [Claude-v1 , Claude-instant-v1.1] - Completed ✅
-// 3. Cohere- [command , Command-light] - Completed ✅
+// 2. Anthropic- [claude-v1 , claude-instant-v1] - Completed ✅
+// 3. Cohere- [command , command-light] - Completed ✅
 // 4. Bard- [To be implemented] - Not Complete (not available) 
 
 exports.Anthropic = async (req, res) => {
   try {
     let prompt = req.body.prompt; //required
-    let model = req.body.model || "claude-v1"; //required {2 types: "claude-v1" and "claude-instant-v1.1" only} defaults to "claude-v1"
+    let model = req.body.model || "claude-v1"; //required {2 types: "claude-v1" and "claude-instant-v1" only} defaults to "claude-v1"
     let max_tokens = req.body.max_tokens || 1000; //optional -defaults to 1000
     let temperature = req.body.temperature || 0.7; //optional -defaults to 0.7
     let data = JSON.stringify({
@@ -101,7 +101,7 @@ exports.Cohere = async (req, res) => {
 exports.OpenAi = async (req, res) => {
   try {
     const prompt = req.body.prompt; //required
-    const model = req.body.model || "chatgpt"; //required => defaults to "chatgpt"
+    const model = req.body.model || "chatgpt"; //required => 2 models available => ("chatgpt" , "gpt3") :: defaults to "chatgpt"
     let temperature = req.body.temperature || 0.7; // optional
     let max_tokens = req.body.max_tokens || 1000; //optional
     if (model != "chatgpt" && model != "gpt3") {
