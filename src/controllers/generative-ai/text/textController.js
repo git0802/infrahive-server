@@ -1,13 +1,23 @@
 require("dotenv").config();
 const axios = require("axios");
 
-
 //Implementaions:
 // 1. OpenAi- [Chatgpt(gpt-3.5-turbo) ,  gpt3(davinci)] - Completed ✅
 // 2. Anthropic- [claude-v1 , claude-instant-v1] - Completed ✅
 // 3. Cohere- [command , command-light] - Completed ✅
-// 4. Bard- [To be implemented] - Not Complete (not available) 
+// 4. Bard- [To be implemented] - Not Complete (not available)
 
+/*
+// TODO: Optional Parameters to be added 
+
+API Reference : https://console.anthropic.com/docs/api/reference#parameters
+
+1. stop_sequences - list of strings - default none
+2. stream - boolean - default false
+3. top_k - int - default (-1)
+4. top_p - float - default (-1)
+
+*/
 exports.Anthropic = async (req, res) => {
   try {
     let prompt = req.body.prompt; //required
@@ -52,6 +62,22 @@ exports.Anthropic = async (req, res) => {
   }
 };
 
+/*
+// TODO: Optional Parameters to be added 
+
+API Reference : https://docs.cohere.com/reference/generate
+
+1. num_generatins: int - default 1
+2. k - int - default 0
+3. p - number - default 0.75
+4. frequency_penalty - number - default 0.0
+5. presence_penalty - number - default 0.0
+6. end_sequences - array of strings
+7. stop_sequences - array of strings
+8. return_likelihoods - string
+9. truncate - string
+
+*/
 exports.Cohere = async (req, res) => {
   try {
     let prompt = req.body.prompt; //required
@@ -98,6 +124,32 @@ exports.Cohere = async (req, res) => {
   }
 };
 
+/*
+// TODO: Optional Parameters to be added 
+
+I. GPT3 - https://platform.openai.com/docs/api-reference/completions/create
+
+1. suffix - string - defualt null
+2. top_p - number - default 1
+3. n - int - default 1
+4. stream - boolean - default false
+5. presence_penalty - number - default 0
+6. frequency_penalty - number - default 0
+7. best_of -integer default 1
+
+I. gpt3.5-turbo - https://platform.openai.com/docs/api-reference/chat/create
+
+1. messages : [
+  role: string
+  content : string
+]
+2. top_p - number - default 1
+3. n - int - default 1
+4. stream - bool - default false
+5. presence_penalty - number - default 0
+6. frequency_penalty - number - default 0
+
+*/
 exports.OpenAi = async (req, res) => {
   try {
     const prompt = req.body.prompt; //required
