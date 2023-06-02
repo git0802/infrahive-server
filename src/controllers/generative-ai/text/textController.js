@@ -249,25 +249,25 @@ exports.OpenAi = async (req, res) => {
     axios
       .request(config)
       .then((response) => {
-        try {
           const arr = [];
+          try{
           if (model == "chatgpt") {
             for (let i = 0; i < response.data.choices.length; i++) {
               arr.push(response.data.choices[i].message.content);
             }
-            res.send(arr);
           }
-
-          for (let i = 0; i < response.data.choices.lengthi++; ) {
-            arr.push(response.data.choices[i].text);
+          else{
+            for (let i = 0; i < response.data.choices.length;i++) {
+              arr.push(response.data.choices[i].text);
+            }
           }
-          res.send(arr);
+          res.send(arr)
         } catch {
-          res.send("Error occured! Could not answer your query.");
+          console.log("Error occured! Could not answer your query.");
         }
       })
       .catch((error) => {
-        console.log("Error occured in Axios!");
+        console.log("Error occured in Axios chatgpt!");
       });
   } catch (error) {
     console.error({
