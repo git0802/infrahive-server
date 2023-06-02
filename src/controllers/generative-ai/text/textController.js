@@ -8,7 +8,7 @@ const axios = require("axios");
 // 4. Bard- [To be implemented] - Not Complete (not available)
 
 /*
-// TODO: Optional Parameters to be added => Done ✅
+//Optional Parameters to be added => Done ✅
 
 API Reference : https://console.anthropic.com/docs/api/reference#parameters
 
@@ -72,7 +72,7 @@ exports.Anthropic = async (req, res) => {
 };
 
 /*
-// TODO: Optional Parameters to be added => Done ✅
+// Optional Parameters to be added => Done ✅
 
 API Reference : https://docs.cohere.com/reference/generate
 
@@ -93,16 +93,15 @@ exports.Cohere = async (req, res) => {
     let model = req.body.model || "command"; //required => 2 models available ("command" && "command-light")
     let max_tokens = req.body.max_tokens || 1000; //optional (advanced) => defaults to 1000
     let num_generations = req.body.num_generations || 1; //optional (advanced) => defaults to 0.75
-    let k = req.body.k || 0;//optional
-    let p = req.body.p || 0.75;//optional
-    let frequency_penalty = req.body.frequency_penalty || 0.0;//optional
-    let presence_penalty = req.body.presence_penalty || 0.0;//optional
-    let end_sequences = req.body.end_sequences || [];//optional
-    let stop_sequences = req.body.stop_sequences || [];//optional
-    let return_likelihoods = req.body.presence_penalty || "NONE";//optional
-    let truncate = req.body.truncate || "START";//optional
-    let temperature = req.body.temperature || 0.7;//optional
-
+    let k = req.body.k || 0; //optional
+    let p = req.body.p || 0.75; //optional
+    let frequency_penalty = req.body.frequency_penalty || 0.0; //optional
+    let presence_penalty = req.body.presence_penalty || 0.0; //optional
+    let end_sequences = req.body.end_sequences || []; //optional
+    let stop_sequences = req.body.stop_sequences || []; //optional
+    let return_likelihoods = req.body.presence_penalty || "NONE"; //optional
+    let truncate = req.body.truncate || "START"; //optional
+    let temperature = req.body.temperature || 0.7; //optional
 
     let data = JSON.stringify({
       prompt: prompt,
@@ -110,14 +109,14 @@ exports.Cohere = async (req, res) => {
       max_tokens: max_tokens,
       temperature: temperature,
       truncate: truncate,
-      return_likelihoods : return_likelihoods,
+      return_likelihoods: return_likelihoods,
       frequency_penalty: frequency_penalty,
       presence_penalty: presence_penalty,
-      end_sequences :end_sequences,
-      stop_sequences : stop_sequences,
-      k : k,
+      end_sequences: end_sequences,
+      stop_sequences: stop_sequences,
+      k: k,
       p: p,
-      num_generations : num_generations,
+      num_generations: num_generations,
     });
     let config = {
       method: "post",
@@ -134,10 +133,10 @@ exports.Cohere = async (req, res) => {
       .request(config)
       .then((response) => {
         try {
-          const arr = []
+          const arr = [];
 
-          for(let i=0;i<response.data.generations.length;i++) {
-            arr.push(response.data.generations[i].text)
+          for (let i = 0; i < response.data.generations.length; i++) {
+            arr.push(response.data.generations[i].text);
           }
           res.send(arr);
         } catch {
@@ -158,7 +157,7 @@ exports.Cohere = async (req, res) => {
 };
 
 /*
-// TODO: Optional Parameters to be added  => DONE ✅
+// Optional Parameters to be added  => DONE ✅
 
 I. GPT3 - https://platform.openai.com/docs/api-reference/completions/create
 
@@ -188,15 +187,14 @@ exports.OpenAi = async (req, res) => {
     const prompt = req.body.prompt; //required
     const model = req.body.model || "chatgpt"; //required => 2 models available => ("chatgpt" , "gpt3") :: defaults to "chatgpt"
     let temperature = req.body.temperature || 0.7; // optional
-    let max_tokens = req.body.max_tokens || 1000;//optional
+    let max_tokens = req.body.max_tokens || 1000; //optional
     let suffix = req.body.suffix || null; //optional
-    let top_p = req.body.top_p || 1;//optional
+    let top_p = req.body.top_p || 1; //optional
     let n = req.body.n || 1; //optional
-    let stream = req.body.stream || false;//optional
+    let stream = req.body.stream || false; //optional
     let presence_penalty = req.body.presence_penalty || 0; //optional
     let frequency_penalty = req.body.frequency_penalty || 0; //optional
     let best_of = req.body.best_of || 1; //optional
-
 
     if (model != "chatgpt" && model != "gpt3") {
       res.send("Please enter a valid model value");
@@ -218,23 +216,23 @@ exports.OpenAi = async (req, res) => {
       temperature: temperature,
       max_tokens: max_tokens,
       top_p: top_p,
-      n : n,
-      stream : stream,
-      presence_penalty : presence_penalty,
-      frequency_penalty : frequency_penalty,
+      n: n,
+      stream: stream,
+      presence_penalty: presence_penalty,
+      frequency_penalty: frequency_penalty,
     });
     let gpt3Data = JSON.stringify({
       model: "davinci",
       prompt: prompt,
       temperature: temperature,
       max_tokens: max_tokens,
-      suffix :suffix,
+      suffix: suffix,
       top_p: top_p,
-      n : n,
-      stream : stream,
-      presence_penalty : presence_penalty,
-      frequency_penalty : frequency_penalty,
-      best_of : best_of,
+      n: n,
+      stream: stream,
+      presence_penalty: presence_penalty,
+      frequency_penalty: frequency_penalty,
+      best_of: best_of,
     });
     //config
     let config = {
@@ -252,16 +250,16 @@ exports.OpenAi = async (req, res) => {
       .request(config)
       .then((response) => {
         try {
-          const arr = []
-          if(model == "chatgpt"){
-            for(let i =0;i<response.data.choices.length;i++){
-              arr.push(response.data.choices[i].message.content)
+          const arr = [];
+          if (model == "chatgpt") {
+            for (let i = 0; i < response.data.choices.length; i++) {
+              arr.push(response.data.choices[i].message.content);
             }
-            res.send(arr)
+            res.send(arr);
           }
 
-          for(let i = 0;i<response.data.choices.lengthi++;){
-            arr.push(response.data.choices[i].text)
+          for (let i = 0; i < response.data.choices.lengthi++; ) {
+            arr.push(response.data.choices[i].text);
           }
           res.send(arr);
         } catch {
