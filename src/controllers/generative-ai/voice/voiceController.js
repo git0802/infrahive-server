@@ -3,6 +3,8 @@ const axios = require("axios");
 const fs = require("fs");
 const { Configuration, OpenAIApi } = require("openai");
 const { BASE_URL } = require("../../../../config.js");
+const path = require("path");
+
 
 //DEEPGRAM => allows only URL
 //Reference: https://developers.deepgram.com/reference/pre-recorded
@@ -94,6 +96,55 @@ exports.WhisperAi = async (req, res) => {
   }
 };
 
+//ElevenLabsAi
+//This is text to speech converstion API.
+//response will be in buffer
+exports.ElevenLabsAi = async (req, res) => {
+  let model_id = req.body.model_id || "eleven_monolingual_v1";
+  let text = req.body.text; //required field
+  let stability = req.body.voice_settings.stability || 0.5;
+  let similarity_boost = req.body.voice_settings.similarity_boost || 0.5;
+  let voice_id = req.body.voice_id || "21m00Tcm4TlvDq8ikWAM"; //default voice id
+  try {
+
+
+    const response = await fetch(
+      `https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`,
+      {
+        method: "POST",
+        headers: {
+          accept: "audio/mpeg",
+          "Content-Type": "application/json",
+          "xi-api-key": process.env.ELEVENLABS_API_KEY,
+        },
+        body: JSON.stringify({
+          text: text,
+          model_id: model_id,
+          voice_settings: {
+            stability: stability,
+            similarity_boost: similarity_boost,
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      throw new Error("Something went wrong");
+    }
+
+    const arrayBuffer = await response.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    res.send(JSON.stringify(buffer));
+  } catch (error) {
+    console.error({
+      title: "ElevenLabsAi",
+      message: error.message,
+      date: new Date(),
+    });
+    return res.status(500).send("Server Error");
+  }
+};
+
 // REFERENCE: https://www.assemblyai.com/docs/Guides/transcribing_an_audio_file
 
 //from frontend user can:
@@ -101,20 +152,18 @@ exports.WhisperAi = async (req, res) => {
 //2. send url of audio file
 //3. send both => then I will consider the url to process.
 
-
 exports.AssemblyAi = async (req, res) => {
   const apikey = process.env.ASSEMBLY_API_KEY;
   let obj = {
     audio_url: req.body.audio_url || "none",
-    name : req.body.name || "none",
+    name: req.body.name || "none",
     language_code: req.body.language_code || "en_us",
     entity_detection: req.body.entity_detection || false,
     sentiment_analysis: req.body.sentiment_analysis || false,
-    content_safety : req.body.content_safety || false,
-    format_text : req.body.format_text || true,
-    audio_start_from : Number(req.body.audio_start_from) || 0,
-    audio_end_at : Number(req.body.audio_end_at) || "none",
-
+    content_safety: req.body.content_safety || false,
+    format_text: req.body.format_text || true,
+    audio_start_from: Number(req.body.audio_start_from) || 0,
+    audio_end_at: Number(req.body.audio_end_at) || "none",
   };
   try {
     if (obj.audio_url != "none") {
@@ -131,38 +180,35 @@ exports.AssemblyAi = async (req, res) => {
     } else {
       //make request for audio file transcription
       const name = req.body.name || "none";
-      if(name != "none"){
-        
-      const path = `${BASE_URL}/uploads/audio/` + name;
-      const uploadUrl = await upload_file(apikey, path);
-      // console.log(uploadUrl);
-      if (!uploadUrl) {
-        res.send("Unable to convert file to text");
+      if (name != "none") {
+        const path = `${BASE_URL}/uploads/audio/` + name;
+        const uploadUrl = await upload_file(apikey, path);
+        // console.log(uploadUrl);
+        if (!uploadUrl) {
+          res.send("Unable to convert file to text");
+        } else {
+          const transcript = await transcribeAudioFile(
+            process.env.ASSEMBLY_API_KEY,
+            obj,
+            uploadUrl
+          );
+          if (transcript != "error") {
+            res.send(transcript);
+          } else {
+            res.send("Error in transcription");
+          }
+        }
+        fs.unlink(path, (err) => {
+          if (err) {
+            console.error("Error deleting file:", err);
+          } else {
+            console.log("File deleted successfully");
+          }
+        });
       } else {
-        const transcript = await transcribeAudioFile(
-          process.env.ASSEMBLY_API_KEY,
-          obj,
-          uploadUrl
-        );
-        if (transcript != "error") {
-          res.send(transcript);
-        } else {
-          res.send("Error in transcription");
-        }
+        res.send("You must provide a name for the file in multipart form data");
       }
-      fs.unlink(path, (err) => {
-        if (err) {
-          console.error("Error deleting file:", err);
-        } else {
-          console.log("File deleted successfully");
-        }
-      });
     }
-    else{
-      res.send("You must provide a name for the file in multipart form data")
-    }
-  }
-  
   } catch (error) {
     console.error({
       title: "AssemblyAi",
@@ -177,7 +223,6 @@ async function upload_file(api_token, path) {
   const url = "https://api.assemblyai.com/v2/upload";
 
   try {
-    
     const response = await axios.post(url, data, {
       headers: {
         "Content-Type": "application/octet-stream",
@@ -202,8 +247,8 @@ async function transcribeAudioUrl(api_token, obj) {
   let language_code = obj.language_code || "en_us";
   let entity_detection = obj.entity_detection || false;
   let sentiment_analysis = obj.sentiment_analysis || false;
-  let content_safety  = obj.content_safety || false;
-  let format_text  = obj.format_text || true;
+  let content_safety = obj.content_safety || false;
+  let format_text = obj.format_text || true;
   let audio_start_from = obj.audio_start_from || 0;
   let audio_end_at = obj.audio_end_at || "none";
 
@@ -212,28 +257,27 @@ async function transcribeAudioUrl(api_token, obj) {
     "content-type": "application/json",
   };
   let body = JSON.stringify({
-    audio_url : audio_url,
-    language_code : language_code,
+    audio_url: audio_url,
+    language_code: language_code,
     entity_detection: entity_detection,
-    sentiment_analysis : sentiment_analysis,
+    sentiment_analysis: sentiment_analysis,
     content_safety: content_safety,
-    format_text : format_text,
-    audio_start_from : audio_start_from,
-    audio_end_at : audio_end_at,
-
+    format_text: format_text,
+    audio_start_from: audio_start_from,
+    audio_end_at: audio_end_at,
   });
-  if(audio_end_at == "none"){
+  if (audio_end_at == "none") {
     body = JSON.stringify({
-      audio_url : audio_url,
-      language_code : language_code,
+      audio_url: audio_url,
+      language_code: language_code,
       entity_detection: entity_detection,
-      sentiment_analysis : sentiment_analysis,
+      sentiment_analysis: sentiment_analysis,
       content_safety: content_safety,
-      format_text : format_text,
-      audio_start_from : audio_start_from,
+      format_text: format_text,
+      audio_start_from: audio_start_from,
     });
   }
-  
+
   const response = await fetch("https://api.assemblyai.com/v2/transcript", {
     method: "POST",
     body: body,
@@ -256,13 +300,13 @@ async function transcribeAudioUrl(api_token, obj) {
   }
 }
 
-async function transcribeAudioFile(api_token, obj , url) {
+async function transcribeAudioFile(api_token, obj, url) {
   //parameters here
   let language_code = obj.language_code || "en_us";
   let entity_detection = obj.entity_detection || false;
   let sentiment_analysis = obj.sentiment_analysis || false;
-  let content_safety  = obj.content_safety || false;
-  let format_text  = obj.format_text || true;
+  let content_safety = obj.content_safety || false;
+  let format_text = obj.format_text || true;
   let audio_start_from = obj.audio_start_from || 0;
   let audio_end_at = obj.audio_end_at || "none";
 
@@ -272,24 +316,24 @@ async function transcribeAudioFile(api_token, obj , url) {
   };
 
   let body = JSON.stringify({
-    audio_url : url,
-    language_code : language_code,
+    audio_url: url,
+    language_code: language_code,
     entity_detection: entity_detection,
-    sentiment_analysis : sentiment_analysis,
+    sentiment_analysis: sentiment_analysis,
     content_safety: content_safety,
-    format_text : format_text,
-    audio_start_from : audio_start_from,
+    format_text: format_text,
+    audio_start_from: audio_start_from,
   });
-  if(audio_end_at != "none"){
+  if (audio_end_at != "none") {
     body = JSON.stringify({
-      audio_url : url,
-      language_code : language_code,
+      audio_url: url,
+      language_code: language_code,
       entity_detection: entity_detection,
-      sentiment_analysis : sentiment_analysis,
+      sentiment_analysis: sentiment_analysis,
       content_safety: content_safety,
-      format_text : format_text,
-      audio_start_from : audio_start_from,
-      audio_end_at : audio_end_at,
+      format_text: format_text,
+      audio_start_from: audio_start_from,
+      audio_end_at: audio_end_at,
     });
   }
 
