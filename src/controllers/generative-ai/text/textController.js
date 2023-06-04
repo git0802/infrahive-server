@@ -8,7 +8,7 @@ const axios = require("axios");
 // 4. Bard- [To be implemented] - Not Complete (not available)
 
 /*
-// TODO: Optional Parameters to be added 
+//Optional Parameters to be added => Done ✅
 
 API Reference : https://console.anthropic.com/docs/api/reference#parameters
 
@@ -23,12 +23,21 @@ exports.Anthropic = async (req, res) => {
     let prompt = req.body.prompt; //required
     let model = req.body.model || "claude-v1"; //required {2 types: "claude-v1" and "claude-instant-v1" only} defaults to "claude-v1"
     let max_tokens = req.body.max_tokens || 1000; //optional -defaults to 1000
-    let temperature = req.body.temperature || 0.7; //optional -defaults to 0.7
+    let stop_sequences = req.body.stop_sequences || []; //optional -defaults to 0.7
+    let temperature = req.body.temperature || 0.7;
+    let stream = req.body.stream || false;
+    let top_k = req.body.top_k || -1;
+    let top_p = req.body.top_p || -1;
+
     let data = JSON.stringify({
       prompt: prompt,
       model: model,
       max_tokens_to_sample: max_tokens,
       temperature: temperature,
+      stop_sequences: stop_sequences,
+      stream: stream,
+      top_k: top_k,
+      top_p: top_p
     });
     let config = {
       method: "post",
@@ -63,11 +72,11 @@ exports.Anthropic = async (req, res) => {
 };
 
 /*
-// TODO: Optional Parameters to be added 
+// Optional Parameters to be added => Done ✅
 
 API Reference : https://docs.cohere.com/reference/generate
 
-1. num_generatins: int - default 1
+1. num_generations: int - default 1
 2. k - int - default 0
 3. p - number - default 0.75
 4. frequency_penalty - number - default 0.0
@@ -83,13 +92,31 @@ exports.Cohere = async (req, res) => {
     let prompt = req.body.prompt; //required
     let model = req.body.model || "command"; //required => 2 models available ("command" && "command-light")
     let max_tokens = req.body.max_tokens || 1000; //optional (advanced) => defaults to 1000
-    let temperature = req.body.temperature || 0.75; //optional (advanced) => defaults to 0.75
+    let num_generations = req.body.num_generations || 1; //optional (advanced) => defaults to 0.75
+    let k = req.body.k || 0; //optional
+    let p = req.body.p || 0.75; //optional
+    let frequency_penalty = req.body.frequency_penalty || 0.0; //optional
+    let presence_penalty = req.body.presence_penalty || 0.0; //optional
+    let end_sequences = req.body.end_sequences || []; //optional
+    let stop_sequences = req.body.stop_sequences || []; //optional
+    let return_likelihoods = req.body.presence_penalty || "NONE"; //optional
+    let truncate = req.body.truncate || "START"; //optional
+    let temperature = req.body.temperature || 0.7; //optional
+
     let data = JSON.stringify({
       prompt: prompt,
       model: model,
       max_tokens: max_tokens,
       temperature: temperature,
-      truncate: "START",
+      truncate: truncate,
+      return_likelihoods: return_likelihoods,
+      frequency_penalty: frequency_penalty,
+      presence_penalty: presence_penalty,
+      end_sequences: end_sequences,
+      stop_sequences: stop_sequences,
+      k: k,
+      p: p,
+      num_generations: num_generations,
     });
     let config = {
       method: "post",
@@ -106,7 +133,12 @@ exports.Cohere = async (req, res) => {
       .request(config)
       .then((response) => {
         try {
-          res.send(response.data.generations[0].text);
+          const arr = [];
+
+          for (let i = 0; i < response.data.generations.length; i++) {
+            arr.push(response.data.generations[i].text);
+          }
+          res.send(arr);
         } catch {
           res.send("Axios Error in Cohere Text.");
         }
@@ -125,7 +157,7 @@ exports.Cohere = async (req, res) => {
 };
 
 /*
-// TODO: Optional Parameters to be added 
+// Optional Parameters to be added  => DONE ✅
 
 I. GPT3 - https://platform.openai.com/docs/api-reference/completions/create
 
@@ -156,6 +188,14 @@ exports.OpenAi = async (req, res) => {
     const model = req.body.model || "chatgpt"; //required => 2 models available => ("chatgpt" , "gpt3") :: defaults to "chatgpt"
     let temperature = req.body.temperature || 0.7; // optional
     let max_tokens = req.body.max_tokens || 1000; //optional
+    let suffix = req.body.suffix || null; //optional
+    let top_p = req.body.top_p || 1; //optional
+    let n = req.body.n || 1; //optional
+    let stream = req.body.stream || false; //optional
+    let presence_penalty = req.body.presence_penalty || 0; //optional
+    let frequency_penalty = req.body.frequency_penalty || 0; //optional
+    let best_of = req.body.best_of || 1; //optional
+
     if (model != "chatgpt" && model != "gpt3") {
       res.send("Please enter a valid model value");
     }
@@ -175,12 +215,24 @@ exports.OpenAi = async (req, res) => {
       messages: messages,
       temperature: temperature,
       max_tokens: max_tokens,
+      top_p: top_p,
+      n: n,
+      stream: stream,
+      presence_penalty: presence_penalty,
+      frequency_penalty: frequency_penalty,
     });
     let gpt3Data = JSON.stringify({
       model: "davinci",
       prompt: prompt,
       temperature: temperature,
       max_tokens: max_tokens,
+      suffix: suffix,
+      top_p: top_p,
+      n: n,
+      stream: stream,
+      presence_penalty: presence_penalty,
+      frequency_penalty: frequency_penalty,
+      best_of: best_of,
     });
     //config
     let config = {
@@ -197,18 +249,25 @@ exports.OpenAi = async (req, res) => {
     axios
       .request(config)
       .then((response) => {
-        try {
-          const resp =
-            model == "chatgpt"
-              ? response.data.choices[0].message.content
-              : response.data.choices[0].text;
-          res.send(resp);
+          const arr = [];
+          try{
+          if (model == "chatgpt") {
+            for (let i = 0; i < response.data.choices.length; i++) {
+              arr.push(response.data.choices[i].message.content);
+            }
+          }
+          else{
+            for (let i = 0; i < response.data.choices.length;i++) {
+              arr.push(response.data.choices[i].text);
+            }
+          }
+          res.send(arr)
         } catch {
-          res.send("Error occured! Could not answer your query.");
+          console.log("Error occured! Could not answer your query.");
         }
       })
       .catch((error) => {
-        console.log("Error occured in Axios!");
+        console.log("Error occured in Axios chatgpt!");
       });
   } catch (error) {
     console.error({
