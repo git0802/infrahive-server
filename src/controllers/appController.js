@@ -11,11 +11,18 @@ const {
   AIChatMessage,
 } = require("langchain/schema");
 
-// const { PineconeClient } = require("@pinecone-database/pinecone");
+const { PineconeClient } = require("@pinecone-database/pinecone");
 const { VectorDBQAChain } = require("langchain/chains");
+const { TokenTextSplitter } = require("langchain/text_splitter");
 const { OpenAI } = require("langchain/llms/openai");
-// const { PineconeStore } = require("langchain/vectorstores/pinecone");
+const { PineconeStore } = require("langchain/vectorstores/pinecone");
 const { RecursiveCharacterTextSplitter } = require("langchain/text_splitter");
+const {
+  ConversationalRetrievalQAChain,
+  LLMChain,
+  loadQAChain,
+  StuffDocumentsChain,
+} = require("langchain/chains");
 
 // file loaders
 const { TextLoader } = require("langchain/document_loaders/fs/text");
@@ -40,6 +47,15 @@ exports.deleteFile = async (req, res) => {
     });
     await Docu_analysis.remove({ email, filename });
     await Nexus.remove({ email, filename });
+
+    const client = new PineconeClient();
+    await client.init({
+      apiKey: process.env.PINECONE_API_KEY,
+      environment: process.env.PINECONE_ENVIRONMENT,
+    });
+    const pineconeIndex = client.Index(process.env.PINECONE_INDEX);
+    await pineconeIndex.delete1({ deleteAll: true, namespace: filename });
+
     res.send({ status: 200, message: "Success" });
   } catch (error) {
     console.error({ title: "deleteFile", message: error, date: new Date() });
@@ -84,16 +100,40 @@ exports.documentSubmit = async (req, res) => {
         openAIApiKey: process.env.API_KEY,
       });
 
-      await docs.map(async (item) => {
-        const vector = await embedding.embedQuery(item.pageContent);
-        const text = "user:" + item.pageContent;
-        await new Nexus({
-          email,
-          vector,
-          text,
-          filename: data[0].name,
-        }).save();
+      // pinecone
+      const splitter = new TokenTextSplitter({
+        chunkSize: 1000,
+        chunkOverlap: 0,
       });
+      
+      const output = await splitter.createDocuments([docs[0].pageContent]);
+
+      const client = new PineconeClient();
+
+      let state = await client.init({
+        apiKey: process.env.PINECONE_API_KEY,
+        environment: process.env.PINECONE_ENVIRONMENT,
+      });
+      const pineconeIndex = client.Index(process.env.PINECONE_INDEX);
+
+      await PineconeStore.fromDocuments(
+        output,
+        new OpenAIEmbeddings({ openAIApiKey: process.env.API_KEY }),
+        { pineconeIndex, namespace: agentData.filename }
+      );
+
+
+
+      // await docs.map(async (item) => {
+      //   const vector = await embedding.embedQuery(item.pageContent);
+      //   const text = "user:" + item.pageContent;
+      //   await new Nexus({
+      //     email,
+      //     vector,
+      //     text,
+      //     filename: data[0].name,
+      //   }).save();
+      // });
     });
 
     res.send({ status: 200, message: "Success" });
@@ -120,26 +160,97 @@ exports.loadDcouments = async (req, res) => {
     return res.status(500).send("Server Error");
   }
 };
+exports.loadOnedocument = async (req, res) => {
+  try {
+    const { filename } = req.body;
+    const data = await Docu_analysis.find({ filename });
+    return res.status(200).send(data);
+  } catch (error) {
+    console.error({
+      title: "documentSubmit",
+      message: error,
+      date: new Date(),
+    });
+    return res.status(500).send("Server Error");
+  }
+};
+exports.publishChatbot = async (req, res) => {
+  try {
+    const { email, filename, publishURL, publishType } = req.body;
+    await Docu_analysis.updateOne({ filename: filename }, { $set: { publishType: publishType, publishURL: publishURL }});
+    res.send({ status: 200, message: "Success" });
+  } catch(error) {
+    console.log({
+      title: "publish",
+      message: error,
+      date: new Date(),
+    });
+    return res.status(500).send("Server Error");
+  }
+}
 exports.getChatText = async (req, res) => {
   try {
+    // const { message, prompt, email } = req.body;
+    // const embedding = new OpenAIEmbeddings({
+    //   openAIApiKey: process.env.API_KEY,
+    // });
+
+    // let conversation = await loadMessages(email, prompt);
+    // console.log(conversation);
+    // console.log("hhhhhhhhhhhhhhhhhhhhhhhh");
+    // let vector = await embedding.embedQuery(message);
+
+    // let info = { email, vector, text: `user:${message}`, filename: prompt };
+    // await new Nexus(info).save();
+
+    // let memories = fetchMemories(vector, conversation, 30);
+    // let notes = await summarizeMemories(memories, message);
+
+    // vector = await embedding.embedQuery(notes);
+    // info = { email, vector, text: `ai:${notes}`, filename: prompt };
+    // await new Nexus(info).save();
+    // return res.status(200).send({ text: notes });
+
     const { message, prompt, email } = req.body;
-    const embedding = new OpenAIEmbeddings({
-      openAIApiKey: process.env.API_KEY,
+
+    const client = new PineconeClient();
+    await client.init({
+      apiKey: process.env.PINECONE_API_KEY,
+      environment: process.env.PINECONE_ENVIRONMENT
     });
+    const pineconeIndex = client.Index(process.env.PINECONE_INDEX);
 
-    let conversation = await loadMessages(email, prompt);
-    let vector = await embedding.embedQuery(message);
+    const vectorStore = await PineconeStore.fromExistingIndex(
+      new OpenAIEmbeddings({ openAIApiKey: process.env.API_KEY }),
+      { pineconeIndex, namespace: prompt }
+    );
 
-    let info = { email, vector, text: `user:${message}`, filename: prompt };
-    await new Nexus(info).save();
+    const llm = new OpenAI({
+      openAIApiKey: process.env.API_KEY,
+      temperature: 0,
+    });
+    const results = await vectorStore.similaritySearch(message, 5);
+    const chain = loadQAChain(llm, { type: "stuff" });
 
-    let memories = fetchMemories(vector, conversation, 30);
-    let notes = await summarizeMemories(memories, message);
+    var rowletter;
 
-    vector = await embedding.embedQuery(notes);
-    info = { email, vector, text: `ai:${notes}`, filename: prompt };
-    await new Nexus(info).save();
-    return res.status(200).send({ text: notes });
+    let total = [];
+    for (let index = 0; index < results.length; index++) {
+      total.push(results[index]);
+    }
+
+    const result = await chain
+      .call({
+        input_documents: total,
+        question: message,
+      })
+      .then((row) => {
+        rowletter = row.text;
+        return rowletter;
+      });
+
+      return res.status(200).send({ text: rowletter });
+
   } catch (error) {
     console.error({
       title: "getChatText",
@@ -150,10 +261,22 @@ exports.getChatText = async (req, res) => {
   }
 };
 
+exports.splitPrompt = async (prompt) => {
+  const maxSegmentSize = 4096;
+  const promptSegments = [];
+
+  for (let i = 0; i < prompt.length; i += maxSegmentSize) {
+    promptSegments.push(prompt.slice(i, i + maxSegmentSize)); 
+  }
+
+  return promptSegments;
+}
 const generatAnswer = async (message, prompt) => {
   const chat = new ChatOpenAI({
     openAIApiKey: process.env.API_KEY,
     temperature: 0,
+    maxTokens: 4000,
+    streaming: true,
   });
   const response = await chat.call([
     new AIChatMessage(prompt),

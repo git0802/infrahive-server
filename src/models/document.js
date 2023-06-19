@@ -8,6 +8,8 @@ const docuSchema = new Schema(
   {
     filename: { type: String },
     orignal_name: { type: String },
+    publishURL: { type: String },
+    publishType: { type: String },
     email: { type: String, required: true },
   },
   { timestamps: true }
