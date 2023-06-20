@@ -32,12 +32,12 @@ const { DocxLoader } = require("langchain/document_loaders/fs/docx");
 const { JSONLoader } = require("langchain/document_loaders/fs/json");
 
 const { DIR } = require("../../serverConf");
-const { Docu_analysis, Nexus } = require("../models");
+const { Docu_analysis } = require("../models");
 
-const openFile = (filename) => {
-  let rawdata = fs.readFileSync(filename, "utf8");
-  return rawdata;
-};
+// const openFile = (filename) => {
+//   let rawdata = fs.readFileSync(filename, "utf8");
+//   return rawdata;
+// };
 exports.deleteFile = async (req, res) => {
   try {
     const { email, filename } = req.body;
@@ -46,7 +46,6 @@ exports.deleteFile = async (req, res) => {
       if (err) throw err;
     });
     await Docu_analysis.remove({ email, filename });
-    await Nexus.remove({ email, filename });
 
     const client = new PineconeClient();
     await client.init({
@@ -261,95 +260,95 @@ exports.getChatText = async (req, res) => {
   }
 };
 
-exports.splitPrompt = async (prompt) => {
-  const maxSegmentSize = 4096;
-  const promptSegments = [];
+// exports.splitPrompt = async (prompt) => {
+//   const maxSegmentSize = 4096;
+//   const promptSegments = [];
 
-  for (let i = 0; i < prompt.length; i += maxSegmentSize) {
-    promptSegments.push(prompt.slice(i, i + maxSegmentSize)); 
-  }
+//   for (let i = 0; i < prompt.length; i += maxSegmentSize) {
+//     promptSegments.push(prompt.slice(i, i + maxSegmentSize)); 
+//   }
 
-  return promptSegments;
-}
-const generatAnswer = async (message, prompt) => {
-  const chat = new ChatOpenAI({
-    openAIApiKey: process.env.API_KEY,
-    temperature: 0,
-    maxTokens: 4000,
-    streaming: true,
-  });
-  const response = await chat.call([
-    new AIChatMessage(prompt),
-    new HumanChatMessage(message),
-  ]);
-  return response.text;
-};
+//   return promptSegments;
+// }
+// const generatAnswer = async (message, prompt) => {
+//   const chat = new ChatOpenAI({
+//     openAIApiKey: process.env.API_KEY,
+//     temperature: 0,
+//     maxTokens: 4000,
+//     streaming: true,
+//   });
+//   const response = await chat.call([
+//     new AIChatMessage(prompt),
+//     new HumanChatMessage(message),
+//   ]);
+//   return response.text;
+// };
 
-const loadMessages = async (email, filename) => {
-  let result = [];
-  const d = await Nexus.find({ email, filename });
-  d.map((data) => {
-    result.push(data);
-  });
-  return result;
-};
+// const loadMessages = async (email, filename) => {
+//   let result = [];
+//   const d = await Nexus.find({ email, filename });
+//   d.map((data) => {
+//     result.push(data);
+//   });
+//   return result;
+// };
 
-const fetchMemories = (vector, logs, count) => {
-  let scores = [];
-  for (let i of logs) {
-    if (vector == i["vector"]) continue;
-    let score = similarity(i["vector"], vector);
-    i["score"] = score;
-    scores.push(i);
-  }
+// const fetchMemories = (vector, logs, count) => {
+//   let scores = [];
+//   for (let i of logs) {
+//     if (vector == i["vector"]) continue;
+//     let score = similarity(i["vector"], vector);
+//     i["score"] = score;
+//     scores.push(i);
+//   }
 
-  let ordered = scores.sort((a, b) => {
-    if (a.score < b.score) {
-      return -1;
-    }
-    if (a.score > b.score) {
-      return 1;
-    }
-    return 0;
-  });
+//   let ordered = scores.sort((a, b) => {
+//     if (a.score < b.score) {
+//       return -1;
+//     }
+//     if (a.score > b.score) {
+//       return 1;
+//     }
+//     return 0;
+//   });
 
-  return ordered.slice(0, count);
-};
+//   return ordered.slice(0, count);
+// };
 
-function similarity(A, B) {
-  var dotproduct = 0;
-  var mA = 0;
-  var mB = 0;
-  for (let i = 0; i < A.length; i++) {
-    // here you missed the i++
-    dotproduct += A[i] * B[i];
-    mA += A[i] * A[i];
-    mB += B[i] * B[i];
-  }
-  mA = Math.sqrt(mA);
-  mB = Math.sqrt(mB);
-  var similarity = dotproduct / (mA * mB); // here you needed extra brackets
-  return similarity;
-}
+// function similarity(A, B) {
+//   var dotproduct = 0;
+//   var mA = 0;
+//   var mB = 0;
+//   for (let i = 0; i < A.length; i++) {
+//     // here you missed the i++
+//     dotproduct += A[i] * B[i];
+//     mA += A[i] * A[i];
+//     mB += B[i] * B[i];
+//   }
+//   mA = Math.sqrt(mA);
+//   mB = Math.sqrt(mB);
+//   var similarity = dotproduct / (mA * mB); // here you needed extra brackets
+//   return similarity;
+// }
 
-const summarizeMemories = async (memories, currentMessage) => {
-  memories = memories.sort((a, b) => {
-    if (a.createdAt < b.createdAt) {
-      return -1;
-    }
-    if (a.createdAt > b.createdAt) {
-      return 1;
-    }
-    return 0;
-  });
-  let block = "";
-  memories.map((memory) => {
-    block += memory["text"] + "\n\n";
-  });
-  block = block.trim();
-  let prompt = openFile(DIR + "/prompt.txt")
-    .replace("<<CONVERSATION>>", block)
-    .replace("<<MESSAGE>>", currentMessage);
-  let notes = await generatAnswer(currentMessage, prompt);
-  return notes || "I am sorry.Some error in communication.";
-};
+// const summarizeMemories = async (memories, currentMessage) => {
+//   memories = memories.sort((a, b) => {
+//     if (a.createdAt < b.createdAt) {
+//       return -1;
+//     }
+//     if (a.createdAt > b.createdAt) {
+//       return 1;
+//     }
+//     return 0;
+//   });
+//   let block = "";
+//   memories.map((memory) => {
+//     block += memory["text"] + "\n\n";
+//   });
+//   block = block.trim();
+//   let prompt = openFile(DIR + "/prompt.txt")
+//     .replace("<<CONVERSATION>>", block)
+//     .replace("<<MESSAGE>>", currentMessage);
+//   let notes = await generatAnswer(currentMessage, prompt);
+//   return notes || "I am sorry.Some error in communication.";
+// };
