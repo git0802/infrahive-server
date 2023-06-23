@@ -43,7 +43,7 @@ exports.deleteFile = async (req, res) => {
     const { email, filename } = req.body;
     const url = DIR + "/uploads/documents/" + filename;
     await fs.unlink(url, (err) => {
-      if (err) throw err;
+      if (err) reject(err);
     });
     await Docu_analysis.remove({ email, filename });
 
@@ -260,16 +260,16 @@ exports.getChatText = async (req, res) => {
   }
 };
 
-// exports.splitPrompt = async (prompt) => {
-//   const maxSegmentSize = 4096;
-//   const promptSegments = [];
+exports.splitPrompt = async (prompt) => {
+  const maxSegmentSize = 4096;
+  const promptSegments = [];
 
-//   for (let i = 0; i < prompt.length; i += maxSegmentSize) {
-//     promptSegments.push(prompt.slice(i, i + maxSegmentSize)); 
-//   }
+  for (let i = 0; i < prompt.length; i += maxSegmentSize) {
+    promptSegments.push(prompt.slice(i, i + maxSegmentSize)); 
+  }
 
-//   return promptSegments;
-// }
+  return promptSegments;
+}
 // const generatAnswer = async (message, prompt) => {
 //   const chat = new ChatOpenAI({
 //     openAIApiKey: process.env.API_KEY,
