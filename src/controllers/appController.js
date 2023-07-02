@@ -120,19 +120,6 @@ exports.documentSubmit = async (req, res) => {
         new OpenAIEmbeddings({ openAIApiKey: process.env.API_KEY }),
         { pineconeIndex, namespace: agentData.filename }
       );
-
-
-
-      // await docs.map(async (item) => {
-      //   const vector = await embedding.embedQuery(item.pageContent);
-      //   const text = "user:" + item.pageContent;
-      //   await new Nexus({
-      //     email,
-      //     vector,
-      //     text,
-      //     filename: data[0].name,
-      //   }).save();
-      // });
     });
 
     res.send({ status: 200, message: "Success" });

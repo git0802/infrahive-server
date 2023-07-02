@@ -6,4 +6,5 @@ module.exports = {
   main_permission: "user_permissions",
   wait_list: "tbl_wait_list",
   nexus: "tbl_nexus",
+  prompt: "tbl_prompt",
 };
