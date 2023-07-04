@@ -1,6 +1,13 @@
 require("dotenv").config();
 const axios = require("axios");
 
+const { Configuration, OpenAIApi } = require("openai");
+
+const configuration = new Configuration({
+  apiKey: process.env.OPENAI_API_KEY,
+});
+const openai = new OpenAIApi(configuration);
+
 //Implementaions:
 // 1. OpenAi- [Chatgpt(gpt-3.5-turbo) ,  gpt3(davinci)] - Completed ✅
 // 2. Anthropic- [claude-v1 , claude-instant-v1] - Completed ✅
@@ -29,38 +36,71 @@ exports.Anthropic = async (req, res) => {
     let top_k = req.body.top_k || -1;
     let top_p = req.body.top_p || -1;
 
-    let data = JSON.stringify({
-      prompt: prompt,
-      model: model,
-      max_tokens_to_sample: max_tokens,
-      temperature: temperature,
-      stop_sequences: stop_sequences,
-      stream: stream,
-      top_k: top_k,
-      top_p: top_p
+    const Anthropic = require("@anthropic-ai/sdk");
+
+    const anthropic = new Anthropic({
+      apiKey: process.env.ANTHROPIC_API_KEY, // defaults to process.env["ANTHROPIC_API_KEY"]
     });
-    let config = {
-      method: "post",
-      maxBodyLength: Infinity,
-      url: "https://api.anthropic.com//v1/complete",
-      headers: {
-        "Content-Type": "application/json",
-        "X-API-Key": process.env.ANTHROPIC_API_KEY,
-      },
-      data: data,
+
+    const params = {
+      prompt: prompt,
+      max_tokens_to_sample: 300,
+      model: 'claude-1',
     };
-    axios
-      .request(config)
-      .then((response) => {
-        try {
-          res.send(response.data.completion);
-        } catch {
-          res.send("Error in getting response || Axios Error");
-        }
-      })
-      .catch((error) => {
-        console.log(error);
-      });
+    const completion = await anthropic.completions.create(params)
+    .catch((err) => {
+      if (err instanceof Anthropic.APIError) {
+        console.log(err.status); // 400
+        console.log(err.name); // BadRequestError
+        console.log(err.headers); // {server: 'nginx', ...}
+      }
+    });
+
+    console.log(completion);
+
+    // const completion = await anthropic.completions.create({
+    //   model: model,
+    //   max_tokens_to_sample: max_tokens,
+    //   temperature: temperature,
+    //   stop_sequences: stop_sequences,
+    //   stream: stream,
+    //   top_k: top_k,
+    //   top_p: top_p,
+    //   prompt: prompt,
+    // });
+
+    // let data = JSON.stringify({
+    //   prompt: prompt,
+    //   model: model,
+    //   max_tokens_to_sample: max_tokens,
+    //   temperature: temperature,
+    //   stop_sequences: stop_sequences,
+    //   stream: stream,
+    //   top_k: top_k,
+    //   top_p: top_p
+    // });
+    // let config = {
+    //   method: "post",
+    //   maxBodyLength: Infinity,
+    //   url: "https://api.anthropic.com//v1/complete",
+    //   headers: {
+    //     "Content-Type": "application/json",
+    //     "X-API-Key": process.env.ANTHROPIC_API_KEY,
+    //   },
+    //   data: data,
+    // };
+    // axios
+    //   .request(config)
+    //   .then((response) => {
+    //     try {
+    //       res.send(response.data.completion);
+    //     } catch {
+    //       res.send("Error in getting response || Axios Error");
+    //     }
+    //   })
+    //   .catch((error) => {
+    //     console.log(error);
+    //   });
   } catch (error) {
     console.error({
       title: "Anthropic Text",
@@ -156,32 +196,6 @@ exports.Cohere = async (req, res) => {
   }
 };
 
-/*
-// Optional Parameters to be added  => DONE ✅
-
-I. GPT3 - https://platform.openai.com/docs/api-reference/completions/create
-
-1. suffix - string - defualt null
-2. top_p - number - default 1
-3. n - int - default 1
-4. stream - boolean - default false
-5. presence_penalty - number - default 0
-6. frequency_penalty - number - default 0
-7. best_of -integer default 1
-
-I. gpt3.5-turbo - https://platform.openai.com/docs/api-reference/chat/create
-
-1. messages : [
-  role: string
-  content : string
-]
-2. top_p - number - default 1
-3. n - int - default 1
-4. stream - bool - default false
-5. presence_penalty - number - default 0
-6. frequency_penalty - number - default 0
-
-*/
 exports.OpenAi = async (req, res) => {
   try {
     const prompt = req.body.prompt; //required
@@ -196,79 +210,71 @@ exports.OpenAi = async (req, res) => {
     let frequency_penalty = req.body.frequency_penalty || 0; //optional
     let best_of = req.body.best_of || 1; //optional
 
-    if (model != "chatgpt" && model != "gpt3") {
+    if (model != "chatgpt" && model != "gpt3" && model != "gpt4") {
       res.send("Please enter a valid model value");
     }
-    const url =
-      model == "chatgpt"
-        ? "https://api.openai.com/v1/chat/completions"
-        : "https://api.openai.com/v1/completions";
-    //Data
+
     const messages = [
       {
+        "role": "system",
+        "content": "You are a helpful assistant.",
+      },
+      {
         role: "user",
-        content: prompt,
+        content: `${prompt}`,
       },
     ];
-    let chatgptData = JSON.stringify({
-      model: "gpt-3.5-turbo",
-      messages: messages,
-      temperature: temperature,
-      max_tokens: max_tokens,
-      top_p: top_p,
-      n: n,
-      stream: stream,
-      presence_penalty: presence_penalty,
-      frequency_penalty: frequency_penalty,
-    });
-    let gpt3Data = JSON.stringify({
-      model: "davinci",
-      prompt: prompt,
-      temperature: temperature,
-      max_tokens: max_tokens,
-      suffix: suffix,
-      top_p: top_p,
-      n: n,
-      stream: stream,
-      presence_penalty: presence_penalty,
-      frequency_penalty: frequency_penalty,
-      best_of: best_of,
-    });
-    //config
-    let config = {
-      method: "post",
-      maxBodyLength: Infinity,
-      url: url,
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
-      },
-      data: model == "chatgpt" ? chatgptData : gpt3Data,
-    };
 
-    axios
-      .request(config)
-      .then((response) => {
-          const arr = [];
-          try{
-          if (model == "chatgpt") {
-            for (let i = 0; i < response.data.choices.length; i++) {
-              arr.push(response.data.choices[i].message.content);
-            }
-          }
-          else{
-            for (let i = 0; i < response.data.choices.length;i++) {
-              arr.push(response.data.choices[i].text);
-            }
-          }
-          res.send(arr)
-        } catch {
-          console.log("Error occured! Could not answer your query.");
-        }
-      })
-      .catch((error) => {
-        console.log("Error occured in Axios chatgpt!");
+    let response;    
+
+    if (model == "gpt4") {
+      response = await openai.createChatCompletion({
+        model: "gpt-4-32k-0613",
+        messages: messages,
+        temperature: temperature,
+        max_tokens: max_tokens,
+        top_p: top_p,
+        n: n,
+        stream: stream,
+        presence_penalty: presence_penalty,
+        frequency_penalty: frequency_penalty,
       });
+      res.send(response.data.choices[0].message.content);
+    }
+
+    if (model == "chatgpt") {
+      response = await openai.createChatCompletion({
+        model: "gpt-3.5-turbo-16k",
+        messages: messages,
+        temperature: temperature,
+        max_tokens: max_tokens,
+        top_p: top_p,
+        n: n,
+        stream: stream,
+        presence_penalty: presence_penalty,
+        frequency_penalty: frequency_penalty,
+      });
+      res.send(response.data.choices[0].message.content);
+    } 
+
+    if (model == "gpt3") {
+      response = await openai.createCompletion({
+        model: "text-davinci-003",
+        prompt: `The following is a conversation with an AI assistant. The assistant is helpful, creative, clever, and very friendly.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman: ${prompt}\nAI:`,
+        temperature: temperature,
+        max_tokens: max_tokens,
+        top_p: top_p,
+        suffix: suffix,
+        n: n,
+        stream: stream,
+        frequency_penalty: frequency_penalty,
+        presence_penalty: presence_penalty,
+        best_of: best_of,
+      });
+
+      res.send(response.data.choices[0].text);
+    }
+
   } catch (error) {
     console.error({
       title: "OpenAi Text",
