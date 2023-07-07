@@ -8,6 +8,14 @@ const configuration = new Configuration({
 });
 const openai = new OpenAIApi(configuration);
 
+const Anthropic = require("@anthropic-ai/sdk");
+
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY, // defaults to process.env["ANTHROPIC_API_KEY"]
+});
+
+const cohere = require("cohere-ai");
+
 //Implementaions:
 // 1. OpenAi- [Chatgpt(gpt-3.5-turbo) ,  gpt3(davinci)] - Completed ✅
 // 2. Anthropic- [claude-v1 , claude-instant-v1] - Completed ✅
@@ -36,71 +44,21 @@ exports.Anthropic = async (req, res) => {
     let top_k = req.body.top_k || -1;
     let top_p = req.body.top_p || -1;
 
-    const Anthropic = require("@anthropic-ai/sdk");
+    async function main() {
+      const data = await anthropic.completions.create({
+        model: model,
+        max_tokens_to_sample: max_tokens,
+        temperature: temperature,
+        stop_sequences: stop_sequences,
+        stream: stream,
+        top_k: top_k,
+        top_p: top_p,
+        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
+      });
 
-    const anthropic = new Anthropic({
-      apiKey: process.env.ANTHROPIC_API_KEY, // defaults to process.env["ANTHROPIC_API_KEY"]
-    });
-
-    const params = {
-      prompt: prompt,
-      max_tokens_to_sample: 300,
-      model: 'claude-1',
-    };
-    const completion = await anthropic.completions.create(params)
-    .catch((err) => {
-      if (err instanceof Anthropic.APIError) {
-        console.log(err.status); // 400
-        console.log(err.name); // BadRequestError
-        console.log(err.headers); // {server: 'nginx', ...}
-      }
-    });
-
-    console.log(completion);
-
-    // const completion = await anthropic.completions.create({
-    //   model: model,
-    //   max_tokens_to_sample: max_tokens,
-    //   temperature: temperature,
-    //   stop_sequences: stop_sequences,
-    //   stream: stream,
-    //   top_k: top_k,
-    //   top_p: top_p,
-    //   prompt: prompt,
-    // });
-
-    // let data = JSON.stringify({
-    //   prompt: prompt,
-    //   model: model,
-    //   max_tokens_to_sample: max_tokens,
-    //   temperature: temperature,
-    //   stop_sequences: stop_sequences,
-    //   stream: stream,
-    //   top_k: top_k,
-    //   top_p: top_p
-    // });
-    // let config = {
-    //   method: "post",
-    //   maxBodyLength: Infinity,
-    //   url: "https://api.anthropic.com//v1/complete",
-    //   headers: {
-    //     "Content-Type": "application/json",
-    //     "X-API-Key": process.env.ANTHROPIC_API_KEY,
-    //   },
-    //   data: data,
-    // };
-    // axios
-    //   .request(config)
-    //   .then((response) => {
-    //     try {
-    //       res.send(response.data.completion);
-    //     } catch {
-    //       res.send("Error in getting response || Axios Error");
-    //     }
-    //   })
-    //   .catch((error) => {
-    //     console.log(error);
-    //   });
+      res.send(data.completion);
+    }
+    main().catch(console.error);
   } catch (error) {
     console.error({
       title: "Anthropic Text",
@@ -143,49 +101,28 @@ exports.Cohere = async (req, res) => {
     let truncate = req.body.truncate || "START"; //optional
     let temperature = req.body.temperature || 0.7; //optional
 
-    let data = JSON.stringify({
-      prompt: prompt,
-      model: model,
-      max_tokens: max_tokens,
-      temperature: temperature,
-      truncate: truncate,
-      return_likelihoods: return_likelihoods,
-      frequency_penalty: frequency_penalty,
-      presence_penalty: presence_penalty,
-      end_sequences: end_sequences,
-      stop_sequences: stop_sequences,
-      k: k,
-      p: p,
-      num_generations: num_generations,
-    });
-    let config = {
-      method: "post",
-      maxBodyLength: Infinity,
-      url: "https://api.cohere.ai/v1/generate",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${process.env.COHERE_API_KEY}`,
-      },
-      data: data,
-    };
+    async function main() {
+      cohere.init(process.env.COHERE_API_KEY);
 
-    axios
-      .request(config)
-      .then((response) => {
-        try {
-          const arr = [];
-
-          for (let i = 0; i < response.data.generations.length; i++) {
-            arr.push(response.data.generations[i].text);
-          }
-          res.send(arr);
-        } catch {
-          res.send("Axios Error in Cohere Text.");
-        }
-      })
-      .catch((error) => {
-        console.log(error);
+      const generateResponse = await cohere.generate({
+        prompt: prompt,
+        model: model,
+        max_tokens: max_tokens,
+        temperature: temperature,
+        truncate: truncate,
+        return_likelihoods: return_likelihoods,
+        frequency_penalty: frequency_penalty,
+        presence_penalty: presence_penalty,
+        end_sequences: end_sequences,
+        stop_sequences: stop_sequences,
+        k: k,
+        p: p,
+        num_generations: num_generations,               
       });
+      
+      res.send(generateResponse.body.generations[0].text);
+    }
+    main().catch(console.error);
   } catch (error) {
     console.error({
       title: "Cohere Text",
@@ -202,7 +139,6 @@ exports.OpenAi = async (req, res) => {
     const model = req.body.model || "chatgpt"; //required => 2 models available => ("chatgpt" , "gpt3") :: defaults to "chatgpt"
     let temperature = req.body.temperature || 0.7; // optional
     let max_tokens = req.body.max_tokens || 1000; //optional
-    let suffix = req.body.suffix || null; //optional
     let top_p = req.body.top_p || 1; //optional
     let n = req.body.n || 1; //optional
     let stream = req.body.stream || false; //optional
@@ -229,7 +165,7 @@ exports.OpenAi = async (req, res) => {
 
     if (model == "gpt4") {
       response = await openai.createChatCompletion({
-        model: "gpt-4-32k-0613",
+        model: "gpt-4",
         messages: messages,
         temperature: temperature,
         max_tokens: max_tokens,
@@ -264,7 +200,6 @@ exports.OpenAi = async (req, res) => {
         temperature: temperature,
         max_tokens: max_tokens,
         top_p: top_p,
-        suffix: suffix,
         n: n,
         stream: stream,
         frequency_penalty: frequency_penalty,
@@ -284,3 +219,238 @@ exports.OpenAi = async (req, res) => {
     return res.status(500).send("Server Error in openAI Text.");
   }
 };
+
+exports.Code = async ( req, res ) => {
+  try {
+    
+    let data;
+    const { model } = req.body;
+    if (model === "gpt3" || model === "chatgpt" || model === 'gpt4') {
+      const { prompt, model, temperature, max_tokens, top_p, n, presence_penalty, frequency_penalty, best_of, codeType } = req.body;
+      if (codeType === "Node") {
+        data = `
+var request = require('request');
+var options = {
+  'method': 'POST',
+  'url': 'http://localhost:2000/api/text/openai',
+  'headers': {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    "prompt": "${prompt}",
+    "model": "${model}",
+    "temperature": "${temperature}",
+    "max_tokens": "${max_tokens}",
+    "top_p": "${top_p}",
+    "n": "${n}",
+    "presence_penalty": "${presence_penalty}",
+    "frequency_penalty": "${frequency_penalty}",
+    "best_of": "${best_of}",
+  })
+
+};
+request(options, function (error, response) {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+        `;
+      } else if (codeType === "Python") {
+        data = `
+import requests
+import json
+
+url = "http://localhost:2000/api/text/openai"
+
+payload = json.dumps({
+  "prompt": "${prompt}",
+  "model": "${model}",
+  "temperature": "${temperature}",
+  "max_tokens": "${max_tokens}",
+  "top_p": "${top_p}",
+  "n": "${n}",
+  "presence_penalty": "${presence_penalty}",
+  "frequency_penalty": "${frequency_penalty}",
+  "best_of": "${best_of}",
+})
+headers = {
+  'Content-Type': 'application/json'
+}
+
+response = requests.request("POST", url, headers=headers, data=payload)
+
+print(response.text)
+        `;
+      } else {
+        data = `
+curl --location 'http://localhost:2000/api/text/openai' \
+--header 'Content-Type: application/json' \
+--data '{
+  "prompt": "${prompt}",
+  "model": "${model}",
+  "temperature": "${temperature}",
+  "max_tokens": "${max_tokens}",
+  "top_p": "${top_p}",
+  "n": "${n}",
+  "presence_penalty": "${presence_penalty}",
+  "frequency_penalty": "${frequency_penalty}",
+  "best_of": "${best_of}",
+}
+'
+        `;
+      }
+    } else if (model === "clause-v1" || model === "clause-instant-v1") {
+      const { prompt, model, max_tokens, temperature, top_k, top_p, API_KEY, codeType } = req.body;
+      if (codeType === "Node") {
+        data = `
+var request = require('request');
+var options = {
+  'method': 'POST',
+  'url': 'http://localhost:2000/api/text/anthropic',
+  'headers': {
+    'Content-Type': 'application/json',
+    'X-Api-Key': '${process.env.ANTHROPIC_API_KEY}'
+  },
+  body: JSON.stringify({
+    "prompt": "${prompt}",
+    "model": "${model}",
+    "max_tokens": "${max_tokens}",
+    "temperature": "${temperature}",
+    "top_k": "${top_k}",
+    "top_p": "${top_p}",
+  })
+
+};
+request(options, function (error, response) {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+        `;
+      } else if (codeType === "Python") {
+        data = `
+import requests
+import json
+
+url = "http://localhost:2000/api/text/anthropic"
+
+payload = json.dumps({
+  "prompt": "${prompt}",
+  "model": "${model}",
+  "max_tokens": "${max_tokens}",
+  "temperature": "${temperature}",
+  "top_k": "${top_k}",
+  "top_p": "${top_p}",
+})
+headers = {
+  'Content-Type': 'application/json',
+  'X-Api-Key': '${process.env.ANTHROPIC_API_KEY}'
+}
+
+response = requests.request("POST", url, headers=headers, data=payload)
+
+print(response.text)
+        `;
+      } else {
+        data = `
+curl --location 'http://localhost:2000/api/text/anthropic' \
+--header 'Content-Type: application/json' \
+--header 'X-Api-Key': '${process.env.ANTHROPIC_API_KEY}' \
+--data '{
+  "prompt": "${prompt}",
+  "model": "${model}",
+  "max_tokens": "${max_tokens}",
+  "temperature": "${temperature}",
+  "top_k": "${top_k}",
+  "top_p": "${top_p}"
+}
+'
+        `;
+      }
+    } else {
+      const { prompt, model, max_tokens, num_generations, k, p, frequency_penalty, presence_penalty, temperature, codeType } = req.body;
+      if (codeType === "Node") {
+        data = `
+var request = require('request');
+var options = {
+  'method': 'POST',
+  'url': 'http://localhost:2000/api/text/cohere',
+  'headers': {
+    'Content-Type': 'application/json',
+    'Authorization': 'Bearer ${process.env.COHERE_API_KEY}'
+  },
+  body: JSON.stringify({
+    "prompt": "${prompt}",
+    "model": "${model}",
+    "max_tokens": "${max_tokens}",
+    "num_generations": "${num_generations}",
+    'k": "${k}",
+    "p": "${p}",
+    "frequency_penalty": "${frequency_penalty}",
+    "presence_penalty": "${presence_penalty}",
+    "temperature": "${temperature}"
+  })
+
+};
+request(options, function (error, response) {
+  if (error) throw new Error(error);
+  console.log(response.body);
+});
+        `;
+      } else if (codeType === "Python") {
+        data = `
+import requests
+import json
+
+url = "http://localhost:2000/api/text/cohere"
+
+payload = json.dumps({
+  "prompt": "${prompt}",
+  "model": "${model}",
+  "max_tokens": "${max_tokens}",
+  "num_generations": "${num_generations}",
+  'k": "${k}",
+  "p": "${p}",
+  "frequency_penalty": "${frequency_penalty}",
+  "presence_penalty": "${presence_penalty}",
+  "temperature": "${temperature}"
+})
+headers = {
+  'Content-Type': 'application/json',
+  'Authorization': 'Bearer ${process.env.COHERE_API_KEY}'
+}
+
+response = requests.request("POST", url, headers=headers, data=payload)
+
+print(response.text)
+        `;
+      } else {
+        data = `
+curl --location 'http://localhost:2000/api/text/cohere' \
+--header 'Content-Type: application/json' \
+--header 'Authorization: Bearer ${process.env.COHERE_API_KEY}' \
+--data '{
+  "prompt": "${prompt}",
+  "model": "${model}",
+  "max_tokens": "${max_tokens}",
+  "num_generations": "${num_generations}",
+  'k": "${k}",
+  "p": "${p}",
+  "frequency_penalty": "${frequency_penalty}",
+  "presence_penalty": "${presence_penalty}",
+  "temperature": "${temperature}"
+}
+'
+        `;
+      }
+    }
+        
+
+    return res.status(200).send(data);
+  } catch (error) {
+    console.error({
+      title: "LoadPrompt",
+      message: error.message,
+      date: new Date(),
+    });
+    return res.status(500).send('Server Error');
+  }
+}
