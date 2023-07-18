@@ -3,6 +3,9 @@ const axios = require("axios");
 
 const { Configuration, OpenAIApi } = require("openai");
 
+const { ChatOpenAI } = require("langchain/chat_models/openai");
+const { HumanChatMessage } = require("langchain/schema");
+
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
 });
@@ -38,27 +41,25 @@ exports.Anthropic = async (req, res) => {
     let prompt = req.body.prompt; //required
     let model = req.body.model || "claude-v1"; //required {2 types: "claude-v1" and "claude-instant-v1" only} defaults to "claude-v1"
     let max_tokens = req.body.max_tokens || 1000; //optional -defaults to 1000
-    let stop_sequences = req.body.stop_sequences || []; //optional -defaults to 0.7
     let temperature = req.body.temperature || 0.7;
-    let stream = req.body.stream || false;
     let top_k = req.body.top_k || -1;
     let top_p = req.body.top_p || -1;
 
-    async function main() {
-      const data = await anthropic.completions.create({
-        model: model,
-        max_tokens_to_sample: max_tokens,
-        temperature: temperature,
-        stop_sequences: stop_sequences,
-        stream: stream,
-        top_k: top_k,
-        top_p: top_p,
-        prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
-      });
+    const stream = await anthropic.completions.create({
+      model: String(model),
+      max_tokens_to_sample: Number(max_tokens),
+      temperature: Number(temperature),
+      stream: true,
+      top_k: Number(top_k),
+      top_p: Number(top_p),
+      prompt: `\n\nHuman: ${prompt}\n\nAssistant:`,
+    });
 
-      res.send(data.completion);
+    for await (const completion of stream) {
+      res.write(completion.completion);
     }
-    main().catch(console.error);
+
+    res.end();
   } catch (error) {
     console.error({
       title: "Anthropic Text",
@@ -117,9 +118,9 @@ exports.Cohere = async (req, res) => {
         stop_sequences: stop_sequences,
         k: k,
         p: p,
-        num_generations: num_generations,               
+        num_generations: num_generations,
       });
-      
+
       res.send(generateResponse.body.generations[0].text);
     }
     main().catch(console.error);
@@ -161,53 +162,84 @@ exports.OpenAi = async (req, res) => {
       },
     ];
 
-    let response;    
+    let response;
 
     if (model == "gpt4") {
-      response = await openai.createChatCompletion({
+      response = new ChatOpenAI({
         model: "gpt-4",
-        messages: messages,
         temperature: temperature,
         max_tokens: max_tokens,
         top_p: top_p,
         n: n,
-        stream: stream,
         presence_penalty: presence_penalty,
         frequency_penalty: frequency_penalty,
+        streaming: true,
+        callbacks: [
+            {
+                handleLLMNewToken(token) {
+                    res.write(token);
+                },
+            },
+        ],
       });
-      res.send(response.data.choices[0].message.content);
+      // res.send(response.data.choices[0].message.content);
+      const chat = await response.call([new HumanChatMessage(prompt)]);
+
+      res.end();
     }
 
     if (model == "chatgpt") {
-      response = await openai.createChatCompletion({
+      response = new ChatOpenAI({
         model: "gpt-3.5-turbo-16k",
-        messages: messages,
         temperature: temperature,
         max_tokens: max_tokens,
         top_p: top_p,
         n: n,
-        stream: stream,
         presence_penalty: presence_penalty,
         frequency_penalty: frequency_penalty,
+        streaming: true,
+        callbacks: [
+            {
+                handleLLMNewToken(token) {
+                    console.log("New token:", token);
+                    res.write(token);
+                },
+            },
+        ],
       });
-      res.send(response.data.choices[0].message.content);
-    } 
+      // res.send(response.data.choices[0].message.content);
+      const chat = await response.call([new HumanChatMessage(prompt)]);
+      console.log(chat.text);
+
+      res.end();
+    }
 
     if (model == "gpt3") {
-      response = await openai.createCompletion({
+      response = new ChatOpenAI({
         model: "text-davinci-003",
         prompt: `The following is a conversation with an AI assistant. The assistant is helpful, creative, clever, and very friendly.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman: ${prompt}\nAI:`,
         temperature: temperature,
         max_tokens: max_tokens,
         top_p: top_p,
         n: n,
-        stream: stream,
         frequency_penalty: frequency_penalty,
         presence_penalty: presence_penalty,
         best_of: best_of,
+        streaming: true,
+        callbacks: [
+            {
+                handleLLMNewToken(token) {
+                    console.log("New token:", token);
+                    res.write(token);
+                },
+            },
+        ],
       });
+      // res.send(response.data.choices[0].message.content);
+      const chat = await response.call([new HumanChatMessage(`The following is a conversation with an AI assistant. The assistant is helpful, creative, clever, and very friendly.\n\nHuman: Hello, who are you?\nAI: I am an AI created by OpenAI. How can I help you today?\nHuman: ${prompt}\nAI:`)]);
+      console.log(chat.text);
 
-      res.send(response.data.choices[0].text);
+      res.end();
     }
 
   } catch (error) {
@@ -220,9 +252,9 @@ exports.OpenAi = async (req, res) => {
   }
 };
 
-exports.Code = async ( req, res ) => {
+exports.Code = async (req, res) => {
   try {
-    
+
     let data;
     const { model } = req.body;
     if (model === "gpt3" || model === "chatgpt" || model === 'gpt4') {
@@ -442,7 +474,7 @@ curl --location 'http://localhost:2000/api/text/cohere' \
         `;
       }
     }
-        
+
 
     return res.status(200).send(data);
   } catch (error) {

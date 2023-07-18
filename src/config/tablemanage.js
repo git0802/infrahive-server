@@ -7,4 +7,6 @@ module.exports = {
   wait_list: "tbl_wait_list",
   nexus: "tbl_nexus",
   prompt: "tbl_prompt",
+  botapp: "tbl_botapp",
+  bothistory: "tbl_bothistory",
 };

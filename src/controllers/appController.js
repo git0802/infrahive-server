@@ -104,7 +104,9 @@ exports.documentSubmit = async (req, res) => {
         chunkSize: 1000,
         chunkOverlap: 0,
       });
-      
+
+      console.log([docs[0].pageContent]);
+
       const output = await splitter.createDocuments([docs[0].pageContent]);
 
       const client = new PineconeClient();
@@ -163,9 +165,12 @@ exports.loadOnedocument = async (req, res) => {
 exports.publishChatbot = async (req, res) => {
   try {
     const { email, filename, publishURL, publishType } = req.body;
-    await Docu_analysis.updateOne({ filename: filename }, { $set: { publishType: publishType, publishURL: publishURL }});
+    await Docu_analysis.updateOne(
+      { filename: filename },
+      { $set: { publishType: publishType, publishURL: publishURL } }
+    );
     res.send({ status: 200, message: "Success" });
-  } catch(error) {
+  } catch (error) {
     console.log({
       title: "publish",
       message: error,
@@ -173,7 +178,7 @@ exports.publishChatbot = async (req, res) => {
     });
     return res.status(500).send("Server Error");
   }
-}
+};
 exports.getChatText = async (req, res) => {
   try {
     // const { message, prompt, email } = req.body;
@@ -202,7 +207,7 @@ exports.getChatText = async (req, res) => {
     const client = new PineconeClient();
     await client.init({
       apiKey: process.env.PINECONE_API_KEY,
-      environment: process.env.PINECONE_ENVIRONMENT
+      environment: process.env.PINECONE_ENVIRONMENT,
     });
     const pineconeIndex = client.Index(process.env.PINECONE_INDEX);
 
@@ -235,8 +240,7 @@ exports.getChatText = async (req, res) => {
         return rowletter;
       });
 
-      return res.status(200).send({ text: rowletter });
-
+    return res.status(200).send({ text: rowletter });
   } catch (error) {
     console.error({
       title: "getChatText",
@@ -252,11 +256,11 @@ exports.splitPrompt = async (prompt) => {
   const promptSegments = [];
 
   for (let i = 0; i < prompt.length; i += maxSegmentSize) {
-    promptSegments.push(prompt.slice(i, i + maxSegmentSize)); 
+    promptSegments.push(prompt.slice(i, i + maxSegmentSize));
   }
 
   return promptSegments;
-}
+};
 // const generatAnswer = async (message, prompt) => {
 //   const chat = new ChatOpenAI({
 //     openAIApiKey: process.env.API_KEY,
