@@ -15,7 +15,11 @@ const { DocxLoader } = require("langchain/document_loaders/fs/docx");
 const { JSONLoader } = require("langchain/document_loaders/fs/json");
 
 const { ChatOpenAI } = require("langchain/chat_models/openai");
-const { HumanChatMessage } = require("langchain/schema");
+const {
+  HumanChatMessage,
+  SystemChatMessage,
+  AIChatMessage,
+} = require("langchain/schema");
 
 const { performance } = require("perf_hooks");
 
@@ -265,28 +269,9 @@ exports.GetChatText = async (req, res) => {
 
       await new Bothistory(aiData).save();
     } else {
-      if (modifiedSentence) {
-        const promptMsg = {
-          appid: appid,
-          message: `${modifiedSentence}`,
-          role: "user",
-          token_usage: token_usage,
-          conversation_id: conversation_id,
-        };
-
-        await new Bothistory(promptMsg).save();
-
-        const aiMsg = {
-          appid: appid,
-          message: remark ? `${remark}` : "",
-          role: "system",
-          conversation_id: conversation_id,
-        };
-
-        await new Bothistory(aiMsg).save();
-      }
-
       aiChat(
+        modifiedSentence ? modifiedSentence : "",
+        modifiedSentence ? remark : "",
         appid,
         prompt,
         modeltype,
@@ -407,6 +392,8 @@ async function dataChat(
 }
 
 async function aiChat(
+  modifiedSentence,
+  remark,
   appid,
   prompt,
   modeltype,
@@ -467,6 +454,13 @@ async function aiChat(
     ],
   });
 
+  console.log(modifiedSentence, remark);
+
+  if (modifiedSentence) {
+    await response.call([new HumanChatMessage(modifiedSentence)]);
+    await response.call([new AIChatMessage(remark)]);
+  }
+
   const chat = await response.call([new HumanChatMessage(prompt)]);
 
   const interaction_time = Math.round(performance.now() - startTime) / 1000;
@@ -484,7 +478,7 @@ async function aiChat(
   res.end();
 }
 
-exports.dataSubmit = async (req, res) => {
+exports.DataSubmit = async (req, res) => {
   try {
     const { appid } = req.body;
     await UploaderManager(req, "documents", async (data) => {
@@ -526,8 +520,6 @@ exports.dataSubmit = async (req, res) => {
         chunkOverlap: 0,
       });
 
-      console.log([docs[0].pageContent]);
-
       const output = await splitter.createDocuments([docs[0].pageContent]);
 
       const client = new PineconeClient();
@@ -548,7 +540,7 @@ exports.dataSubmit = async (req, res) => {
     res.send({ status: 200, message: "Success" });
   } catch (error) {
     console.error({
-      title: "documentSubmit",
+      title: "DataSubmit",
       message: error,
       date: new Date(),
     });
@@ -560,7 +552,7 @@ exports.FollowQuestion = async (req, res) => {
   try {
     const { appid, conversation_id } = req.body;
 
-    const data = await Bothistory.find({
+    const ans = await Bothistory.find({
       appid,
       conversation_id,
       role: "system",
@@ -568,15 +560,21 @@ exports.FollowQuestion = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(1);
 
-    const prompt = data[0].message;
+    const que = await Bothistory.find({
+      appid,
+      conversation_id,
+      role: "user",
+    })
+      .sort({ createdAt: -1 })
+      .limit(1);
+
+    const prompt = que[0].message + ans[0].message;
 
     const question = [
-      { role: "system", content: "You are a helpful assistant." },
       {
         role: "user",
-        content: `Please help me predict the three most likely questions that human would ask, ${prompt} and keeping each question under 20 characters.`,
+        content: `Please help me predict the three most likely questions that human would ask, ${prompt} and keeping each question under 20 characters.\nThe output must be in JSON format following the specified schema:\n[\"question1\",\"question2\",\"question3\"]\n`,
       },
-      { role: "system", content: `Question:` },
     ];
 
     let response = await openai.createChatCompletion({
@@ -584,12 +582,187 @@ exports.FollowQuestion = async (req, res) => {
       messages: question,
     });
 
-    console.log(response.data.choices[0].message.content);
     res.send(response.data.choices[0].message.content);
   } catch (error) {
     console.error({
       title: "FollowQuestion",
       message: error.message,
+      date: new Date(),
+    });
+    return res.status(500).send("Server Error");
+  }
+};
+
+exports.AutoMatic = async (req, res) => {
+  try {
+    const { appid, audiences, hoping_to_solve } = req.body;
+    const template = `Given MY INTENDED AUDIENCES and HOPING TO SOLVE using a language model, please select \
+the model prompt that best suits the input. 
+You will be provided with the prompt, variables, and an opening statement. 
+Only the content enclosed in double curly braces, such as {{variable}}, in the prompt can be considered as a variable; \
+otherwise, it cannot exist as a variable in the variables.
+If you believe revising the original input will result in a better response from the language model, you may \
+suggest revisions.
+
+<< FORMATTING >>
+Return a markdown code snippet with a JSON object formatted to look like, \
+no any other string out of markdown code snippet:
+\`\`\`json
+{
+    "prompt": "string \\ generated prompt",
+    "variables": ["list of string \\ variables"],
+    "opening_statement": "string \\ an opening statement to guide users on how to ask questions with generated prompt \
+and fill in variables, with a welcome sentence, and keep TLDR."
+}
+\`\`\`
+
+<< EXAMPLES >>
+[EXAMPLE A]
+\`\`\`json
+{
+  "prompt": "Write a letter about love",
+  "variables": [],
+  "opening_statement": "Hi! I'm your love letter writer AI."
+}
+\`\`\`
+
+[EXAMPLE B]
+\`\`\`json
+{
+  "prompt": "Translate from {{lanA}} to {{lanB}}",
+  "variables": ["lanA", "lanB"],
+  "opening_statement": "Welcome to use translate app"
+}
+\`\`\`
+
+[EXAMPLE C]
+\`\`\`json
+{
+  "prompt": "Write a story about {{topic}}",
+  "variables": ["topic"],
+  "opening_statement": "I'm your story writer"
+}
+\`\`\`
+
+<< MY INTENDED AUDIENCES >>
+${audiences}
+
+<< HOPING TO SOLVE >>
+${hoping_to_solve}
+
+<< OUTPUT >>
+`;
+
+    const question = [
+      { role: "system", content: "You are a helpful assistant." },
+      {
+        role: "user",
+        content: template,
+      },
+      { role: "system", content: `Question:` },
+    ];
+    let response = await openai.createChatCompletion({
+      model: "gpt-4",
+      messages: question,
+    });
+
+    const onlydata = response.data.choices[0].message.content
+      .replace(/```json/, "")
+      .replace(/```/, "");
+
+    const { prompt, variables, opening_statement } = JSON.parse(onlydata);
+
+    await Botapp.updateOne(
+      { appid: appid },
+      {
+        $set: {
+          preprompt: prompt,
+          remark: opening_statement,
+          variable: `${variables}`,
+        },
+      }
+    );
+
+    res.send({ status: 200, message: "Success" });
+  } catch (error) {
+    console.error({
+      title: "Automatic",
+      message: error.message,
+      date: new Date(),
+    });
+    return res.status(500).send("Server Error");
+  }
+};
+
+exports.GetChatHistory = async (req, res) => {
+  try {
+    const { appid, conversation_id } = req.body;
+    const data = await Bothistory.find({ appid, conversation_id });
+
+    return res.status(200).send(data);
+  } catch (error) {
+    console.error({
+      title: "GetChatHistory",
+      message: error,
+      date: new Date(),
+    });
+    return res.status(500).send("Server Error");
+  }
+};
+
+exports.GetChatVaule = async (req, res) => {
+  try {
+    const { appid } = req.body;
+    const ids = await Bothistory.find({ appid }).distinct("conversation_id");
+
+    let message = [];
+    let data = [];
+
+    let result = [];
+
+    for (let i in ids) {
+      data[i] = await Bothistory.find({ conversation_id: ids[i] });
+      for (let j in data[i]) {
+        message[j] = data[i][j].message;
+      }
+      const question = [
+        {
+          role: "system",
+          content: "You are a helpful assistant.",
+        },
+        {
+          role: "user",
+          content: `Human:${message}\n-----\nHelp me summarize the intent of what the human said and provide a title, the title should not exceed 20 words.\n`,
+        },
+        {
+          role: "system",
+          content: "title:",
+        },
+      ];
+      let response = await openai.createChatCompletion({
+        model: "gpt-4",
+        messages: question,
+      });
+
+      const date = await Bothistory.find({ conversation_id: ids[i] })
+        .sort({ createdAt: -1 })
+        .limit(1);
+
+      let time = date[0].createdAt;
+
+      result[i] = {
+        conversation_id: ids[i],
+        summary: response.data.choices[0].message.content,
+        count: data[i].length,
+        date: time,
+      };
+    }
+
+    return res.status(200).send(result);
+  } catch (error) {
+    console.error({
+      title: "GetChatHistory",
+      message: error,
       date: new Date(),
     });
     return res.status(500).send("Server Error");
