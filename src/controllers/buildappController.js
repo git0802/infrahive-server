@@ -52,7 +52,8 @@ exports.CreateApp = async (req, res) => {
     let top_p = req.body.top_p || 1;
     let presence_penalty = req.body.presence_penalty || 0;
     let frequency_penalty = req.body.frequency_penalty || 0;
-    let open_state = req.body.open_state || "true";
+    let open_front_state = req.body.open_front_state || "true";
+    let open_back_state = req.body.open_back_state || "true";
 
     const agentData = {
       email,
@@ -65,7 +66,8 @@ exports.CreateApp = async (req, res) => {
       presence_penalty,
       frequency_penalty,
       max_token,
-      open_state,
+      open_front_state,
+      open_back_state,
     };
     await new Botapp(agentData).save();
 
@@ -97,7 +99,7 @@ exports.LoadApp = async (req, res) => {
       appname,
       description,
     };
-    return res.status(200).send(resData);
+    return res.status(200).send(data);
   } catch (error) {
     console.error({
       title: "LoadApp",
@@ -139,7 +141,8 @@ exports.UpdateApp = async (req, res) => {
       presence_penalty,
       frequency_penalty,
       max_token,
-      open_state,
+      open_front_state,
+      open_back_state,
     } = req.body;
 
     await Botapp.updateOne(
@@ -158,7 +161,8 @@ exports.UpdateApp = async (req, res) => {
           presence_penalty: presence_penalty,
           frequency_penalty: frequency_penalty,
           max_token: max_token,
-          open_state: open_state,
+          open_front_state: open_front_state,
+          open_back_state: open_back_state,
         },
       }
     );
